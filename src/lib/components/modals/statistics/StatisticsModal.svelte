@@ -11,6 +11,8 @@
   import PieChart from './charts/PieChart.svelte';
   import PieCharts from './charts/PieCharts.svelte';
   import StatsCard from './StatsCard.svelte';
+  import AircraftReportCard from './cards/AircraftReportCard.svelte';
+  import PunctualityReportCard from './cards/PunctualityReportCard.svelte';
 
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
@@ -230,72 +232,119 @@
       {#if showFilters}
         <ResponsiveFilters {flights} bind:filters />
       {/if}
-      <div class="grid gap-4 pb-2 md:grid-cols-2 lg:grid-cols-5">
-        <StatsCard class="py-4 px-8">
-          <h3 class="text-sm font-medium">Flights</h3>
-          <span class="text-2xl font-bold">
-            <NumberFlow value={flightCount} />
-          </span>
-        </StatsCard>
-        <StatsCard class="py-4 px-8">
-          <h3 class="text-sm font-medium">Distance</h3>
-          <span class="text-2xl font-bold">
-            <NumberFlow
-              value={isMetric ? totalDistance : kmToMiles(totalDistance)}
-              format={{
-                style: 'unit',
-                unit: isMetric ? 'kilometer' : 'mile',
-                unitDisplay: 'short',
-                maximumFractionDigits: 0,
-              }}
-            />
-            (<NumberFlow value={round(earthCircumnavigations, 2)} />x 🌎)
-          </span>
-        </StatsCard>
-        <StatsCard class="py-4 px-8">
-          <h3 class="text-sm font-medium">Duration</h3>
-          <span class="text-2xl font-bold">
-            {#if totalDuration.days}
-              <NumberFlow value={totalDurationParts.days} />d
-            {/if}
-            {#if totalDuration.hours}
-              <NumberFlow value={totalDurationParts.hours} />h
-            {/if}
-            {#if totalDuration.minutes}
-              <NumberFlow value={totalDurationParts.minutes} />m
-            {:else if !totalDuration.days && !totalDuration.hours}
-              0m
-            {/if}
-          </span>
-        </StatsCard>
-        <StatsCard class="py-4 px-8">
-          <h3 class="text-sm font-medium">Airports</h3>
-          <span class="text-2xl font-bold">
-            <NumberFlow value={airports} />
-          </span>
-        </StatsCard>
-        {#if showCountryStats}
-          <StatsCard class="py-4 px-8">
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex flex-col">
-                <h3 class="text-sm font-medium">Countries</h3>
-                <span class="text-2xl font-bold">
-                  <NumberFlow value={countriesCount} />
-                </span>
+      <div class="space-y-4">
+        <div
+          class="relative rounded-xl overflow-hidden border border-opacity-20 shadow-lg"
+          style="background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(200, 200, 200, 0.05) 100%); border-color: rgba(128, 128, 128, 0.2);"
+        >
+          <div class="p-6">
+            <h3 class="text-lg font-semibold mb-4 text-foreground">
+              Overall Statistics
+            </h3>
+            <div class="flex flex-wrap gap-4">
+              <div
+                class="flex items-center justify-between p-3 rounded-lg bg-background/40 backdrop-blur-sm border border-gray-500/10 flex-1 min-w-[120px]"
+              >
+                <div>
+                  <h4 class="text-sm font-medium text-muted-foreground">
+                    Flights
+                  </h4>
+                  <span class="text-xl font-bold text-foreground">
+                    <NumberFlow value={flightCount} />
+                  </span>
+                </div>
               </div>
-              {#if countriesCount === 0}
-                <Button
-                  href={resolve('/visited-countries')}
-                  variant="secondary"
-                  size="sm"
+              <div
+                class="flex items-center justify-between p-3 rounded-lg bg-background/40 backdrop-blur-sm border border-gray-500/10 flex-1 min-w-[120px]"
+              >
+                <div>
+                  <h4 class="text-sm font-medium text-muted-foreground">
+                    Distance
+                  </h4>
+                  <span class="text-xl font-bold text-foreground">
+                    <NumberFlow
+                      value={isMetric
+                        ? totalDistance
+                        : kmToMiles(totalDistance)}
+                      format={{
+                        style: 'unit',
+                        unit: isMetric ? 'kilometer' : 'mile',
+                        unitDisplay: 'short',
+                        maximumFractionDigits: 0,
+                      }}
+                    />
+                    (<NumberFlow value={round(earthCircumnavigations, 2)} />x
+                    🌎)
+                  </span>
+                </div>
+              </div>
+              <div
+                class="flex items-center justify-between p-3 rounded-lg bg-background/40 backdrop-blur-sm border border-gray-500/10 flex-1 min-w-[120px]"
+              >
+                <div>
+                  <h4 class="text-sm font-medium text-muted-foreground">
+                    Duration
+                  </h4>
+                  <span class="text-xl font-bold text-foreground">
+                    {#if totalDuration.days}
+                      <NumberFlow value={totalDurationParts.days} />d
+                    {/if}
+                    {#if totalDuration.hours}
+                      <NumberFlow value={totalDurationParts.hours} />h
+                    {/if}
+                    {#if totalDuration.minutes}
+                      <NumberFlow value={totalDurationParts.minutes} />m
+                    {:else if !totalDuration.days && !totalDuration.hours}
+                      0m
+                    {/if}
+                  </span>
+                </div>
+              </div>
+              <div
+                class="flex items-center justify-between p-3 rounded-lg bg-background/40 backdrop-blur-sm border border-gray-500/10 flex-1 min-w-[120px]"
+              >
+                <div>
+                  <h4 class="text-sm font-medium text-muted-foreground">
+                    Airports
+                  </h4>
+                  <span class="text-xl font-bold text-foreground">
+                    <NumberFlow value={airports} />
+                  </span>
+                </div>
+              </div>
+              {#if showCountryStats}
+                <div
+                  class="flex items-center justify-between p-3 rounded-lg bg-background/40 backdrop-blur-sm border border-gray-500/10 flex-1 min-w-[120px]"
                 >
-                  <Plus size={16} />
-                  Add
-                </Button>
+                  <div class="flex items-center justify-between gap-4 w-full">
+                    <div>
+                      <h4 class="text-sm font-medium text-muted-foreground">
+                        Countries
+                      </h4>
+                      <span class="text-xl font-bold text-foreground">
+                        <NumberFlow value={countriesCount} />
+                      </span>
+                    </div>
+                    {#if countriesCount === 0}
+                      <Button
+                        href={resolve('/visited-countries')}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        <Plus size={16} />
+                        Add
+                      </Button>
+                    {/if}
+                  </div>
+                </div>
               {/if}
             </div>
-          </StatsCard>
-        {/if}
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <AircraftReportCard flights={completedFlights} {seatUserId} />
+          <PunctualityReportCard flights={completedFlights} />
+        </div>
       </div>
       <h3 class="text-2xl font-bold tracking-tight pt-4">Flight Statistics</h3>
       <PieCharts

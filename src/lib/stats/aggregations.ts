@@ -6,6 +6,7 @@ import {
 } from '$lib/db/types';
 import { COUNTRIES } from '$lib/data/countries';
 import { type FlightData, toTitleCase } from '$lib/utils';
+import { differenceInMinutes, parseISO } from 'date-fns';
 
 export type FlightChartKey =
   | 'seat-class'
@@ -361,6 +362,149 @@ export function airportDistribution(
     }
   }
   return sortAndLimit(counts, options);
+}
+
+// Aircraft Report Helper Functions
+export function totalAircraftTypes(flights: FlightData[]): number {
+  const types = new Set(
+    flights.map((f) => f.aircraft?.name).filter((n) => n !== undefined),
+  );
+  return types.size;
+}
+
+export function mostFlownAircraftType(
+  flights: FlightData[],
+): { type: string; count: number } | null {
+  if (flights.length === 0) return null;
+
+  const aircraftDist = aircraftModelDistribution(flights, {});
+  const entries = Object.entries(aircraftDist);
+  if (entries.length === 0) return null;
+
+  const [type, count] = entries[0]!;
+  return { type, count };
+}
+
+export function mostFlownTail(
+  flights: FlightData[],
+): { tail: string; count: number } | null {
+  if (flights.length === 0) return null;
+
+  const tailDist = aircraftRegDistribution(flights, {});
+  const entries = Object.entries(tailDist);
+  if (entries.length === 0) return null;
+
+  // Skip "No Data" and use the first tail with actual data
+  const tailEntry = entries.find(([tail]) => tail !== 'No Data');
+  if (!tailEntry) return null;
+
+  const [tail, count] = tailEntry;
+  return { tail, count };
+}
+
+// Punctuality Report Helper Functions
+export function getDelayInMinutes(
+  scheduled: string | null | undefined,
+  actual: string | null | undefined,
+): number | null {
+  if (!scheduled || !actual) return null;
+  try {
+    const scheduledTime = parseISO(scheduled);
+    const actualTime = parseISO(actual);
+    return differenceInMinutes(actualTime, scheduledTime);
+  } catch {
+    return null;
+  }
+}
+
+export function calculateDelayStats(flights: FlightData[]): {
+  delayedFlights: number;
+  totalDelayed: number;
+  totalFlights: number;
+  totalDelayMinutes: number;
+  maxDelayMinutes: number;
+  airlineDelays: Record<
+    string,
+    { delayedFlights: number; totalDelayMinutes: number; totalFlights: number }
+  >;
+} {
+  let delayedFlights = 0;
+  let totalDelayMinutes = 0;
+  let maxDelayMinutes = 0;
+  const airlineDelays: Record<
+    string,
+    { delayedFlights: number; totalDelayMinutes: number; totalFlights: number }
+  > = {};
+
+  for (const flight of flights) {
+    // Use arrival_scheduled vs arrival for delay calculation
+    const scheduled = flight.raw?.arrivalScheduled;
+    const actual = flight.raw?.arrival;
+    const airlineName = flight.airline?.name ?? 'Unknown';
+
+    // Initialize airline total flights count
+    if (!airlineDelays[airlineName]) {
+      airlineDelays[airlineName] = {
+        delayedFlights: 0,
+        totalDelayMinutes: 0,
+        totalFlights: 0,
+      };
+    }
+    airlineDelays[airlineName]!.totalFlights++;
+
+    if (scheduled && actual) {
+      try {
+        const delayMinutes = getDelayInMinutes(scheduled, actual);
+
+        // Only count delays > 10 minutes
+        if (delayMinutes !== null && delayMinutes > 10) {
+          delayedFlights++;
+          totalDelayMinutes += delayMinutes;
+          maxDelayMinutes = Math.max(maxDelayMinutes, delayMinutes);
+
+          airlineDelays[airlineName]!.delayedFlights++;
+          airlineDelays[airlineName]!.totalDelayMinutes += delayMinutes;
+        }
+      } catch {
+        // Skip flights with invalid dates
+      }
+    }
+  }
+
+  return {
+    delayedFlights,
+    totalDelayed: delayedFlights,
+    totalFlights: flights.length,
+    totalDelayMinutes,
+    maxDelayMinutes,
+    airlineDelays,
+  };
+}
+
+export function getWorstAirlinesByDelay(
+  airlineDelays: Record<
+    string,
+    { delayedFlights: number; totalDelayMinutes: number; totalFlights: number }
+  >,
+  limit: number = 3,
+): Array<{
+  airline: string;
+  totalDelayMinutes: number;
+  delayedFlights: number;
+  delayPercentage: number;
+}> {
+  return Object.entries(airlineDelays)
+    .map(([airline, delays]) => ({
+      airline,
+      totalDelayMinutes: delays.totalDelayMinutes,
+      delayedFlights: delays.delayedFlights,
+      delayPercentage:
+        delays.totalFlights > 0
+          ? (delays.delayedFlights / delays.totalFlights) * 100
+          : 0,
+    }))
+    .sort((a, b) => b.totalDelayMinutes - a.totalDelayMinutes)
+    .slice(0, limit);
 }
 
 export const FLIGHT_CHARTS: Record<
